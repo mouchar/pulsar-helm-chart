@@ -113,11 +113,13 @@ spec:
         {{- end }}
       terminationGracePeriodSeconds: {{ .Values.proxy.gracePeriod }}
       serviceAccountName: "{{ template "pulsar.fullname" . }}-{{ .Values.proxy.component }}"
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.proxy.securityContext "root" . "indent" 6) }}
       initContainers:
       {{- if .Values.tls.proxy.cacerts.enabled }}
       - name: combine-certs
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.proxy "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.proxy "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.proxy.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["sh", "-c"]
         args:
@@ -132,6 +134,7 @@ spec:
       - name: wait-zookeeper-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.proxy "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.proxy "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.proxy.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.proxy.waitZookeeperTimeout }}", "sh", "-c"]
         args:
@@ -155,6 +158,7 @@ spec:
       - name: wait-oxia-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.proxy "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.proxy "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.proxy.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.proxy.waitOxiaTimeout }}", "sh", "-c"]
         args:
@@ -171,6 +175,7 @@ spec:
       - name: wait-broker-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.proxy "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.proxy "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.proxy.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.proxy.waitBrokerTimeout }}", "sh", "-c"]
         args:
@@ -190,6 +195,7 @@ spec:
       - name: "{{ template "pulsar.fullname" . }}-{{ .Values.proxy.component }}"
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.proxy "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.proxy "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.proxy.containerSecurityContext "root" . "indent" 8) }}
         {{- if .Values.proxy.probe.liveness.enabled }}
         livenessProbe:
           httpGet:

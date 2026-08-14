@@ -87,12 +87,18 @@ metadata:
 spec:
   backoffLimit: 1
   template:
+    metadata:
+      labels:
+        {{- include "pulsar.template.labels" . | nindent 8 }}
+        component: {{ .Values.broker.component }}-sts-cleanup
     spec:
       serviceAccountName: "{{ template "pulsar.fullname" . }}-{{ .Values.broker.component }}-sts-cleanup"
       restartPolicy: Never
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.broker.securityContext "root" . "indent" 6) }}
       containers:
         - name: sts-cleanup
           image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.kubectl "root" .) }}"
+          {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.broker.containerSecurityContext "root" . "indent" 10) }}
           command:
             - sh
             - -c

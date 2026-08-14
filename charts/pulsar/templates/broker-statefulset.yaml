@@ -75,10 +75,7 @@ spec:
 {{- end }}
     spec:
       serviceAccountName: "{{ template "pulsar.fullname" . }}-{{ .Values.broker.component }}-acct"
-      {{- if .Values.broker.securityContext }}
-      securityContext:
-{{ toYaml .Values.broker.securityContext | indent 8 }}
-      {{- end }}
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.broker.securityContext "root" . "indent" 6) }}
     {{- if .Values.broker.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.broker.nodeSelector | indent 8 }}
@@ -141,6 +138,7 @@ spec:
       - name: cacerts
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.broker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.broker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.broker.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["sh", "-c"]
         args:
@@ -155,6 +153,7 @@ spec:
       - name: wait-zookeeper-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.broker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.broker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.broker.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.broker.waitZookeeperTimeout }}", "sh", "-c"]
         args:
@@ -176,6 +175,7 @@ spec:
       - name: wait-oxia-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.broker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.broker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.broker.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.broker.waitOxiaTimeout }}", "sh", "-c"]
         args:
@@ -190,6 +190,7 @@ spec:
       - name: wait-bookkeeper-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.broker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.broker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.broker.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.broker.waitBookkeeperTimeout }}", "sh", "-c"]
         args:
@@ -222,6 +223,7 @@ spec:
       - name: "{{ template "pulsar.fullname" . }}-{{ .Values.broker.component }}"
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.broker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.broker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.broker.containerSecurityContext "root" . "indent" 8) }}
         {{- if .Values.broker.probe.liveness.enabled }}
         livenessProbe:
           httpGet:

@@ -106,10 +106,7 @@ spec:
         {{ end }}
         {{- end }}    
       serviceAccountName: {{ template "pulsar.fullname" . }}-{{ .Values.oxia.component }}
-      {{- if .Values.oxia.server.securityContext }}
-      securityContext:
-{{ toYaml .Values.oxia.server.securityContext | indent 8 }}
-      {{- end }}
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.oxia.server.securityContext "root" . "indent" 6) }}
       containers:
         - command:
             - "oxia"
@@ -126,6 +123,7 @@ spec:
             {{- end}}
           image: "{{ .Values.images.oxia.repository }}:{{ .Values.images.oxia.tag }}"
           imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.oxia "root" .) }}"
+          {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.oxia.server.containerSecurityContext "root" . "indent" 10) }}
           name: server
           ports:
             {{- range $key, $value := .Values.oxia.server.ports }}

@@ -102,6 +102,7 @@ spec:
 {{ toYaml .Values.standalone.tolerations | indent 8 }}
     {{- end }}
       terminationGracePeriodSeconds: {{ .Values.standalone.gracePeriod }}
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.standalone.securityContext "root" . "indent" 6) }}
       {{- if .Values.standalone.initContainers }}
       initContainers:
         {{- toYaml .Values.standalone.initContainers | nindent 6 }}
@@ -110,6 +111,7 @@ spec:
       - name: "{{ template "pulsar.fullname" . }}-{{ .Values.standalone.component }}"
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.standalone "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.standalone "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.standalone.containerSecurityContext "root" . "indent" 8) }}
         {{- if .Values.standalone.probe.liveness.enabled }}
         livenessProbe:
           tcpSocket:

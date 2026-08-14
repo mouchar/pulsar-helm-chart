@@ -61,6 +61,7 @@ spec:
       priorityClassName: {{ .Values.oxia.coordinator.priorityClassName }}
     {{- end }}
       serviceAccountName: {{ template "pulsar.fullname" . }}-{{ .Values.oxia.component }}-coordinator
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.oxia.coordinator.securityContext "root" . "indent" 6) }}
       containers:
         - command:
 {{- if .Values.oxia.coordinator.entrypoint }}
@@ -70,6 +71,7 @@ spec:
 {{- end }}
           image: "{{ .Values.images.oxia.repository }}:{{ .Values.images.oxia.tag }}"
           imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.oxia "root" .) }}"
+          {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.oxia.coordinator.containerSecurityContext "root" . "indent" 10) }}
           name: coordinator
           ports:
             {{- range $key, $value := .Values.oxia.coordinator.ports }}

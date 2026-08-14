@@ -63,6 +63,7 @@ spec:
         {{- toYaml .Values.pulsar_manager.topologySpreadConstraints | nindent 8 }}
     {{- end }}
       terminationGracePeriodSeconds: {{ .Values.pulsar_manager.gracePeriod }}
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.pulsar_manager.securityContext "root" . "indent" 6) }}
       {{- if .Values.pulsar_manager.initContainers }}
       initContainers:
         {{- toYaml .Values.pulsar_manager.initContainers | nindent 6 }}
@@ -71,6 +72,7 @@ spec:
         - name: "{{ template "pulsar.fullname" . }}-{{ .Values.pulsar_manager.component }}"
           image: "{{ .Values.images.pulsar_manager.repository }}:{{ .Values.images.pulsar_manager.tag }}"
           imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsar_manager "root" .) }}"
+          {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "root" . "indent" 10) }}
         {{- if .Values.pulsar_manager.resources }}
           resources:
 {{ toYaml .Values.pulsar_manager.resources | indent 12 }}

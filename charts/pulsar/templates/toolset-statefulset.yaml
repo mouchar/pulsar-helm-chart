@@ -67,11 +67,13 @@ spec:
     {{- end }}
       terminationGracePeriodSeconds: {{ .Values.toolset.gracePeriod }}
       serviceAccountName: "{{ template "pulsar.fullname" . }}-{{ .Values.toolset.component }}"
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.toolset.securityContext "root" . "indent" 6) }}
       initContainers:
       {{- if .Values.tls.toolset.cacerts.enabled }}
       - name: cacerts
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.toolset "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.toolset "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.toolset.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["sh", "-c"]
         args:
@@ -92,6 +94,7 @@ spec:
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.broker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.broker "root" .) }}"
         {{- end }}
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.toolset.containerSecurityContext "root" . "indent" 8) }}
       {{- if .Values.toolset.resources }}
         resources:
 {{ toYaml .Values.toolset.resources | indent 10 }}

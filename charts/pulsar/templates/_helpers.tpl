@@ -111,6 +111,53 @@ release: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Render a pod-level securityContext.
+
+Merges the chart-wide `.Values.podSecurityContext` defaults with a per-component
+`<component>.securityContext` override, where the per-component value wins. Renders
+nothing when both are empty, so charts that set neither are unaffected.
+
+Usage:
+  {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.broker.securityContext "root" . "indent" 6) }}
+*/}}
+{{- define "pulsar.podSecurityContext" -}}
+{{- include "pulsar.mergedSecurityContext" (dict "global" .root.Values.podSecurityContext "component" .securityContext "indent" .indent) -}}
+{{- end -}}
+
+{{/*
+Render a container-level securityContext.
+
+Merges the chart-wide `.Values.containerSecurityContext` defaults with a per-component
+`<component>.containerSecurityContext` override, where the per-component value wins.
+Applies to both containers and initContainers. Renders nothing when both are empty.
+
+Usage:
+  {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.broker.containerSecurityContext "root" . "indent" 8) }}
+*/}}
+{{- define "pulsar.containerSecurityContext" -}}
+{{- include "pulsar.mergedSecurityContext" (dict "global" .root.Values.containerSecurityContext "component" .securityContext "indent" .indent) -}}
+{{- end -}}
+
+{{/*
+Merge a global and a per-component securityContext and render the resulting block,
+indented by `indent` spaces. Nested maps are deep-merged; the per-component value
+takes precedence. Renders nothing when the merged result is empty.
+
+`mergeOverwrite` is used rather than `merge` because `merge` treats zero values
+(`0`, `false`, `""`) in its destination as absent, which would silently discard a
+per-component `fsGroup: 0` or `allowPrivilegeEscalation: false` override.
+Both operands are deep-copied so that `.Values` is never mutated.
+*/}}
+{{- define "pulsar.mergedSecurityContext" -}}
+{{- $global := deepCopy (.global | default dict) -}}
+{{- $component := deepCopy (.component | default dict) -}}
+{{- $merged := mergeOverwrite $global $component -}}
+{{- if $merged -}}
+{{- printf "securityContext:\n%s" (toYaml $merged | indent 2) | nindent (int .indent) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Create ImagePullSecrets
 */}}
 {{- define "pulsar.imagePullSecrets" -}}

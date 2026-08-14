@@ -55,6 +55,7 @@ spec:
 {{- end }}
     spec:
       serviceAccountName: "{{ template "pulsar.fullname" . }}-{{ .Values.function_worker.component }}-acct"
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.function_worker.securityContext "root" . "indent" 6) }}
     {{- if .Values.function_worker.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.function_worker.nodeSelector | indent 8 }}
@@ -117,6 +118,7 @@ spec:
       - name: cacerts
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.function_worker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.function_worker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.function_worker.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["sh", "-c"]
         args:
@@ -130,6 +132,7 @@ spec:
       - name: wait-broker-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.function_worker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.function_worker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.function_worker.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.function_worker.waitBrokerTimeout }}", "sh", "-c"]
         args:
@@ -146,6 +149,7 @@ spec:
       - name: "{{ template "pulsar.fullname" . }}-{{ .Values.function_worker.component }}"
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.function_worker "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.function_worker "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.function_worker.containerSecurityContext "root" . "indent" 8) }}
         {{- if .Values.function_worker.probe.liveness.enabled }}
         livenessProbe:
           tcpSocket:

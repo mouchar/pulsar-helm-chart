@@ -113,15 +113,13 @@ spec:
         {{- end }}
       terminationGracePeriodSeconds: {{ .Values.zookeeper.gracePeriod }}
       serviceAccountName: "{{ template "pulsar.fullname" . }}-{{ .Values.zookeeper.component }}"
-      {{- if .Values.zookeeper.securityContext }}
-      securityContext:
-{{ toYaml .Values.zookeeper.securityContext | indent 8 }}
-      {{- end }}
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.zookeeper.securityContext "root" . "indent" 6) }}
       initContainers:
       {{- if .Values.tls.zookeeper.cacerts.enabled }}
       - name: cacerts
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.zookeeper "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.zookeeper "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.zookeeper.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["sh", "-c"]
         args:
@@ -137,6 +135,7 @@ spec:
       - name: "{{ template "pulsar.fullname" . }}-{{ .Values.zookeeper.component }}"
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.zookeeper "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.zookeeper "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.zookeeper.containerSecurityContext "root" . "indent" 8) }}
       {{- if .Values.zookeeper.resources }}
         resources:
 {{ toYaml .Values.zookeeper.resources | indent 10 }}

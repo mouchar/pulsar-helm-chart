@@ -285,6 +285,105 @@ multiple times (later files win), or use the [`merge-values.sh`](examples/merge-
 helper to merge several into a single file. See [`examples/README.md`](examples/README.md)
 for the full list and usage details.
 
+## Pod and container security contexts
+
+Two global values apply a security context to every pod and every container the chart
+itself renders, including its initContainers and the init/cleanup Jobs. Containers you
+supply through `<component>.initContainers`, `oxia.coordinator.extraContainers` or
+`dekaf.deployment.extraContainers` are passed through verbatim and are not merged with
+these settings -- set a `securityContext` on those yourself:
+
+```yaml
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10000
+  runAsGroup: 10000
+  fsGroup: 10000
+  fsGroupChangePolicy: OnRootMismatch
+  supplementalGroups: [10000]
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
+```
+
+Both are empty by default, so the chart's rendered output is unchanged unless you set
+them. Use them when a cluster policy engine (Pod Security Admission, OPA Gatekeeper,
+Kyverno) requires settings the chart does not set on its own.
+
+The `containerSecurityContext` block above is what the Kubernetes `restricted` Pod
+Security Standard actually enforces, together with `runAsNonRoot`. See
+[`examples/values-psa-restricted.yaml`](examples/values-psa-restricted.yaml).
+
+Each global value is merged with the matching per-component override, and the
+per-component value wins on a per-key basis:
+
+| Global | Per-component |
+|---|---|
+| `podSecurityContext` | `<component>.securityContext` |
+| `containerSecurityContext` | `<component>.containerSecurityContext` |
+
+The per-component keys exist for `zookeeper`, `bookkeeper`, `broker`, `autorecovery`,
+`proxy`, `toolset`, `function_worker`, `pulsar_manager`, `standalone`, `oxia.server`,
+`oxia.coordinator`, `pulsar_metadata`, `dekaf.deployment` and
+`auth.authentication.jwt.generateSecrets`. Component-owned Jobs follow the component
+they belong to: the bookkeeper cluster-initialize Job uses `bookkeeper.*`, the
+zookeeper and broker `sts-cleanup` upgrade hooks use `zookeeper.*` and `broker.*`, and
+the `pulsar-cluster-initialize` Job uses `pulsar_metadata.*`.
+
+### Overriding fsGroup, if a policy constrains group IDs
+
+`zookeeper`, `bookkeeper`, `broker` and `oxia.server` ship `securityContext.fsGroup: 0`
+so that mounted volumes are group-owned by GID 0, the group the `pulsar` user (UID 10000)
+belongs to. That is deliberate, and it is what lets the images run under an arbitrary
+assigned UID — the model OpenShift uses. **`fsGroup: 0` is not a privilege**: group 0
+inside a container is an ordinary group, and root power comes from UID 0 and capabilities,
+neither of which this grants.
+
+Most policies do not require you to change it. In particular the Kubernetes `restricted`
+Pod Security Standard places **no constraint on `fsGroup`, `fsGroupChangePolicy` or
+`supplementalGroups`**, and the PSS policy sets that Gatekeeper and Kyverno ship mirror
+PSA, so `fsGroup: 0` is admitted there as-is.
+
+Override it only when a policy actually constrains group IDs to a numeric range — for
+example Gatekeeper's PodSecurityPolicy-derived `K8sPSPAllowedUsers` with
+`fsGroup: {rule: MustRunAs, ranges: [{min: 1, ...}]}`, or an OpenShift SCC. Because a
+per-component value takes precedence over the global one, setting a global `fsGroup`
+alone does **not** change these four components — override their own `securityContext`
+as well:
+
+```yaml
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10000
+  runAsGroup: 10000
+  fsGroup: 10000
+  fsGroupChangePolicy: OnRootMismatch
+  supplementalGroups: [10000]
+bookkeeper:
+  securityContext:
+    fsGroup: 10000
+    fsGroupChangePolicy: OnRootMismatch
+```
+
+`fsGroup` is applied as a *supplementary* group, so `runAsGroup` does not need to match
+it -- the process keeps its own primary GID and still gets access to the volume.
+
+On a cluster with existing volumes, changing `fsGroup` triggers a recursive ownership
+change on first mount; `fsGroupChangePolicy: OnRootMismatch` keeps that to the first pass,
+but it can still take a long time on large bookie ledger volumes. Test on a copy before
+changing a production cluster.
+
+### readOnlyRootFilesystem
+
+`containerSecurityContext.readOnlyRootFilesystem: true` is accepted but does not work
+out of the box: the Pulsar images rewrite their configuration under `/pulsar/conf` on
+startup (`bin/apply-config-from-env.py`) and write logs under `/pulsar/logs`. Mount
+writable volumes over those paths using `<component>.extraVolumes` and
+`<component>.extraVolumeMounts` before enabling it.
+
 ## Disabling victoria-metrics-k8s-stack components
 
 In order to disable the victoria-metrics-k8s-stack, you can add the following to your `values.yaml`.

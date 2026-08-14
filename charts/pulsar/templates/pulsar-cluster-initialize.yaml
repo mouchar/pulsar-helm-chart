@@ -48,11 +48,13 @@ spec:
       nodeSelector:
 {{ toYaml .Values.pulsar_metadata.nodeSelector | indent 8 }}
     {{- end }}
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.pulsar_metadata.securityContext "root" . "indent" 6) }}
       initContainers:
       {{- if .Values.tls.toolset.cacerts.enabled }}
       - name: cacerts
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_metadata.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["sh", "-c"]
         args:
@@ -66,6 +68,7 @@ spec:
       - name: wait-zk-cs-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_metadata.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.pulsar_metadata.waitZookeeperTimeout }}", "sh", "-c"]
         args:
@@ -81,6 +84,7 @@ spec:
       - name: wait-zk-metastore-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_metadata.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.pulsar_metadata.waitZookeeperTimeout }}", "sh", "-c"]
         args:
@@ -100,6 +104,7 @@ spec:
       - name: wait-oxia-ready
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
         imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_metadata.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.pulsar_metadata.waitOxiaTimeout }}", "sh", "-c"]
         args:
@@ -114,6 +119,7 @@ spec:
       - name: pulsar-bookkeeper-verify-clusterid
         image: {{ template "pulsar.imageFullName" (dict "image" .Values.pulsar_metadata.image "root" .) }}
         imagePullPolicy: {{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_metadata.containerSecurityContext "root" . "indent" 8) }}
         resources: {{ toYaml .Values.initContainer.resources | nindent 10 }}
         command: ["timeout", "{{ .Values.pulsar_metadata.waitBookkeeperTimeout }}", "sh", "-c"]
         args:
@@ -136,6 +142,7 @@ spec:
       - name: {{ template "pulsar.fullname" . }}-{{ .Values.pulsar_metadata.component }}
         image: {{ template "pulsar.imageFullName" (dict "image" .Values.pulsar_metadata.image "root" .) }}
         imagePullPolicy: {{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}
+        {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_metadata.containerSecurityContext "root" . "indent" 8) }}
       {{- if .Values.pulsar_metadata.resources }}
         resources:
 {{ toYaml .Values.pulsar_metadata.resources | indent 10 }}

@@ -57,10 +57,12 @@ spec:
       priorityClassName: {{ .Values.dekaf.deployment.priorityClassName }}
       {{- end }}
 
+      {{- include "pulsar.podSecurityContext" (dict "securityContext" ((.Values.dekaf).deployment).securityContext "root" . "indent" 6) }}
       containers:
         - name: dekaf
           image: "{{ .Values.images.dekaf.repository }}:{{ .Values.images.dekaf.tag }}"
           imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.dekaf "root" .) }}"
+          {{- include "pulsar.containerSecurityContext" (dict "securityContext" ((.Values.dekaf).deployment).containerSecurityContext "root" . "indent" 10) }}
           env:
           - name: DEKAF_PULSAR_WEB_URL
             value: "http://{{ template "pulsar.fullname" . }}-{{ .Values.broker.component }}:{{ .Values.broker.ports.http }}"
