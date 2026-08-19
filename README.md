@@ -378,11 +378,85 @@ changing a production cluster.
 
 ### readOnlyRootFilesystem
 
-`containerSecurityContext.readOnlyRootFilesystem: true` is accepted but does not work
-out of the box: the Pulsar images rewrite their configuration under `/pulsar/conf` on
-startup (`bin/apply-config-from-env.py`) and write logs under `/pulsar/logs`. Mount
-writable volumes over those paths using `<component>.extraVolumes` and
-`<component>.extraVolumeMounts` before enabling it.
+The Pulsar images do not run on a read-only root filesystem unaided. They rewrite their
+configuration under `/pulsar/conf` on startup (`bin/apply-config-from-env.py`), write logs
+under `/pulsar/logs`, and the JVM and the functions worker use `/tmp`.
+
+Setting `containerSecurityContext.readOnlyRootFilesystem: true` is nevertheless enough.
+For each entry in `emptyDirVolumes` the chart then mounts an `emptyDir` at that path on
+every container and initContainer of the component, and for entries marked
+`seedFromImage: true` it prepends a `copy-pulsar-conf` initContainer that copies the
+image's contents into the volume first — an `emptyDir` starts empty, and
+`apply-config-from-env.py` edits files that must already exist.
+
+The chart-wide default describes the Pulsar images:
+
+```yaml
+emptyDirVolumes:
+  - path: /pulsar/conf
+    seedFromImage: true
+  - path: /pulsar/logs
+    sizeLimit: 1Gi
+  - path: /tmp
+    sizeLimit: 1Gi
+```
+
+`sizeLimit` matters: without it an `emptyDir` is unbounded and a busy `/pulsar/logs` can
+fill a node's ephemeral storage and get pods evicted.
+
+This is driven by the effective (merged) container securityContext, so a single global
+`readOnlyRootFilesystem: true` covers the release, and a component that overrides it back
+to `false` also loses the volumes.
+
+#### Per-component paths
+
+Every component takes its own `<component>.emptyDirVolumes`, which **replaces** the list
+it would otherwise inherit rather than adding to it — Helm merges maps per key but
+replaces lists wholesale. Use `[]` for "this component needs none".
+
+The three paths above describe the Pulsar images, so they are not applied to components
+that run something else. Those carry their own default and never inherit the chart-wide
+list:
+
+| Component | Default | Why |
+|---|---|---|
+| `oxia.server`, `oxia.coordinator` | `/tmp` | the `oxia` binary keeps its own state under its data directory, but `/tmp` is provided so that a Go dependency or a future version falling back to `os.TempDir()` cannot take the metadata store down |
+| `dekaf.deployment` | `/tmp` | the JVM writes scratch files there |
+| everything else | the three above | Pulsar images |
+
+Setting `<component>.emptyDirVolumes` still overrides either default.
+
+To hand a path back to yourself, drop its entry and declare it through
+`<component>.extraVolumes` / `<component>.extraVolumeMounts`. Declaring just the mount is
+enough: an entry whose path the component already mounts via `extraVolumeMounts` is
+skipped, because a duplicate `mountPath` is rejected by the API server. Bear in mind that
+whatever you mount over `/pulsar/conf` has to be populated, since nothing seeds it for you.
+
+Rejected at render time rather than at apply time: a relative path, an unknown entry key,
+two paths that reduce to the same volume name (`/pulsar/logs` and `/pulsar-logs` both give
+`pulsar-logs`), and a path long enough to exceed the 63-character limit on a name.
+
+#### pulsar_manager is not supported
+
+`pulsar_manager` cannot run with a read-only root filesystem. Besides `/run`,
+`/var/log/nginx` and `/var/lib/nginx`, the `apachepulsar/pulsar-manager` image writes a
+supervisord socket into `/pulsar-manager` — its own install directory, which an `emptyDir`
+cannot cover without hiding the application. Enabling both fails the render with an
+explanatory message; set
+
+```yaml
+pulsar_manager:
+  containerSecurityContext:
+    readOnlyRootFilesystem: false
+```
+
+to exclude that component. Note this also excludes its cluster-initialize Job, which
+shares the `pulsar_manager` securityContext even though it runs a Pulsar image and would
+otherwise support a read-only root filesystem.
+
+Note that logs written to an `emptyDir` do not survive pod replacement. If you rely on
+reading `/pulsar/logs` from inside a pod, ship them off-node or keep
+`readOnlyRootFilesystem` disabled.
 
 ## Disabling victoria-metrics-k8s-stack components
 

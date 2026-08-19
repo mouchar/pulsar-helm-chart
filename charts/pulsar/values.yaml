@@ -152,13 +152,37 @@ affinity:
 ## `zookeeper.securityContext`), and be aware that changing `fsGroup` on a cluster
 ## with existing volumes triggers a recursive ownership change on first mount.
 ##
-## `readOnlyRootFilesystem: true` is not supported out of the box: the Pulsar
-## images rewrite their configuration under /pulsar/conf on startup and write logs
-## under /pulsar/logs. Mount writable volumes over those paths with the
-## `<component>.extraVolumes` / `<component>.extraVolumeMounts` settings before
-## enabling it.
+## Setting `readOnlyRootFilesystem: true` is supported: the chart then mounts the
+## writable volumes the Pulsar images need. See `emptyDirVolumes` below.
 podSecurityContext: {}
 containerSecurityContext: {}
+
+## Writable volumes mounted when a component sets `readOnlyRootFilesystem: true`; the
+## Pulsar images rewrite /pulsar/conf on startup, log to /pulsar/logs, and use /tmp.
+## Ignored while `readOnlyRootFilesystem` is unset, so the default output is unchanged.
+##
+## Per entry: `path` (required, absolute; the volume name is derived from it, so two
+## paths that sanitise alike are rejected), `seedFromImage` (copy the image's contents
+## there first, via a `copy-pulsar-conf` initContainer, since an emptyDir starts empty),
+## and `sizeLimit` (an uncapped emptyDir can fill the node and get the pod evicted).
+##
+## `<component>.emptyDirVolumes` REPLACES this list rather than extending it; use `[]`
+## for "this component needs none" -- but a component with `readOnlyRootFilesystem: true`
+## and an empty list has no writable path at all, so supply them yourself through
+## `<component>.extraVolumes` / `<component>.extraVolumeMounts`. A path the component
+## already mounts through `extraVolumeMounts` is skipped, since duplicate mountPaths are
+## rejected.
+## See the README for the components that need something other than this default.
+##
+## Keep in sync with the fallback in the `pulsar.emptyDirVolumes.resolve` helper, which
+## applies when the key is absent (`helm upgrade --reuse-values`).
+emptyDirVolumes:
+  - path: /pulsar/conf
+    seedFromImage: true
+  - path: /pulsar/logs
+    sizeLimit: 1Gi
+  - path: /tmp
+    sizeLimit: 1Gi
 
 ## Components
 ##

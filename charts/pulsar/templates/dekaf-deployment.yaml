@@ -57,6 +57,7 @@ spec:
       priorityClassName: {{ .Values.dekaf.deployment.priorityClassName }}
       {{- end }}
 
+      {{- $edv := fromJsonArray (include "pulsar.emptyDirVolumes.resolve" (dict "component" (((.Values.dekaf).deployment) | default dict) "default" (list (dict "path" "/tmp" "sizeLimit" "1Gi")) "root" .)) }}
       {{- include "pulsar.podSecurityContext" (dict "securityContext" ((.Values.dekaf).deployment).securityContext "root" . "indent" 6) }}
       containers:
         - name: dekaf
@@ -94,6 +95,9 @@ spec:
 
           {{- if ((.Values.dekaf).persistence).enabled }}
           volumeMounts:
+            {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" ((.Values.dekaf).deployment).containerSecurityContext "volumes" $edv "root" .) }}
+            {{- include "pulsar.emptyDirVolumes.mounts" $edv | nindent 12 }}
+            {{- end }}
             - name: {{ template "pulsar.fullname" . }}-{{ template "dekaf.component" . }}-library
               mountPath: /dekaf/data/library
           {{- end }}
@@ -107,6 +111,9 @@ spec:
       {{- end }}
 
       volumes:
+      {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" ((.Values.dekaf).deployment).containerSecurityContext "volumes" $edv "root" .) }}
+      {{- include "pulsar.emptyDirVolumes.volumes" $edv | nindent 6 }}
+      {{- end }}
       {{- if ((.Values.dekaf).persistence).enabled }}
       - name: {{ template "pulsar.fullname" . }}-{{ template "dekaf.component" . }}-library
         persistentVolumeClaim:

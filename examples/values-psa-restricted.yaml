@@ -50,8 +50,14 @@ podSecurityContext:
 
 # Applied to every container and initContainer. This matches the container-level controls
 # of both PSS `restricted` and OpenShift's `restricted-v2` SCC.
+#
+# readOnlyRootFilesystem is in neither standard but is supported here; see the README for
+# what it mounts, and note that logs on an emptyDir do not survive pod replacement.
+# `pulsar_manager` is the one component that cannot run read-only, and enabling both fails
+# the render with an explanatory message.
 containerSecurityContext:
   allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop: ["ALL"]
   seccompProfile:

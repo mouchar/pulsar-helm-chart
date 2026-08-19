@@ -62,6 +62,7 @@ podSecurityContext:
 # Applied to every container and initContainer the chart renders.
 containerSecurityContext:
   allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop: ["ALL"]
   seccompProfile:

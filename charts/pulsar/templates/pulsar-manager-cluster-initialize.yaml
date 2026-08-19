@@ -51,13 +51,27 @@ spec:
 {{ toYaml .Values.pulsar_metadata.tolerations | indent 8 }}
       {{- end }}
       restartPolicy: OnFailure
+      {{- $edv := fromJsonArray (include "pulsar.emptyDirVolumes.resolve" (dict "component" .Values.pulsar_manager "root" .)) }}
       {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.pulsar_manager.securityContext "root" . "indent" 6) }}
       initContainers:
+        {{- /*
+        This Job runs a Pulsar image and its main container does `cd /tmp` and
+        `curl -D headers.txt`, so it needs the writable paths like every other
+        Pulsar-image workload. The pulsar_manager StatefulSet itself does not -- that
+        runs the apachepulsar/pulsar-manager image and has no /pulsar tree.
+        */}}
+        {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "volumes" $edv "root" .) }}
+        {{- include "pulsar.emptyDirVolumes.seedContainer" (dict "volumes" $edv "image" .Values.pulsar_metadata.image "securityContext" .Values.pulsar_manager.containerSecurityContext "root" .) | nindent 8 }}
+        {{- end }}
         - name: wait-pulsar-manager-ready
           image: "{{ template "pulsar.imageFullName" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
           imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
           {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "root" . "indent" 10) }}
           resources: {{ toYaml .Values.initContainer.resources | nindent 12 }}
+          {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "volumes" $edv "root" .) }}
+          volumeMounts:
+          {{- include "pulsar.emptyDirVolumes.mounts" $edv | nindent 10 }}
+          {{- end }}
           command: [ "sh", "-c" ]
           args:
             - |
@@ -73,6 +87,10 @@ spec:
           imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.pulsar_metadata.image "root" .) }}"
           {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "root" . "indent" 10) }}
           resources: {{ toYaml .Values.initContainer.resources | nindent 12 }}
+          {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "volumes" $edv "root" .) }}
+          volumeMounts:
+          {{- include "pulsar.emptyDirVolumes.mounts" $edv | nindent 10 }}
+          {{- end }}
           command: [ "sh", "-c" ]
           args:
             - |
@@ -91,6 +109,10 @@ spec:
           {{- include "pulsar.containerSecurityContext" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "root" . "indent" 10) }}
           {{- if .Values.pulsar_metadata.resources }}
           resources: {{ toYaml .Values.pulsar_metadata.resources | nindent 12 }}
+          {{- end }}
+          {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "volumes" $edv "root" .) }}
+          volumeMounts:
+          {{- include "pulsar.emptyDirVolumes.mounts" $edv | nindent 10 }}
           {{- end }}
           command: [ "sh", "-c" ]
           args:
@@ -192,5 +214,9 @@ spec:
                   name: "{{ template "pulsar.fullname" . }}-{{ .Values.pulsar_manager.component }}-secret"
                   {{- end }}
                   key: UI_PASSWORD
+      {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.pulsar_manager.containerSecurityContext "volumes" $edv "root" .) }}
+      volumes:
+      {{- include "pulsar.emptyDirVolumes.volumes" $edv | nindent 6 }}
+      {{- end }}
 {{- end }}
 {{- end }}

@@ -18,6 +18,10 @@
 #
 
 {{- if .Values.components.pulsar_manager }}
+{{- $pmSC := mergeOverwrite (deepCopy (.Values.containerSecurityContext | default dict)) (deepCopy (.Values.pulsar_manager.containerSecurityContext | default dict)) }}
+{{- if $pmSC.readOnlyRootFilesystem }}
+{{- fail "ERROR: pulsar_manager does not support readOnlyRootFilesystem. The apachepulsar/pulsar-manager image runs nginx, PostgreSQL and supervisord, and writes a supervisor socket inside its own install directory (/pulsar-manager), which cannot be covered by a mounted volume without shadowing the application. Set pulsar_manager.containerSecurityContext.readOnlyRootFilesystem=false to exclude this component, or disable components.pulsar_manager. Every other component the chart renders does support it." }}
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

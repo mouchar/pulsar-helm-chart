@@ -115,8 +115,12 @@ spec:
         {{- end }}
       terminationGracePeriodSeconds: {{ .Values.autorecovery.gracePeriod }}
       serviceAccountName: "{{ template "pulsar.fullname" . }}-{{ .Values.autorecovery.component }}"
+      {{- $edv := fromJsonArray (include "pulsar.emptyDirVolumes.resolve" (dict "component" .Values.autorecovery "root" .)) }}
       {{- include "pulsar.podSecurityContext" (dict "securityContext" .Values.autorecovery.securityContext "root" . "indent" 6) }}
       initContainers:
+      {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.autorecovery.containerSecurityContext "volumes" $edv "root" .) }}
+      {{- include "pulsar.emptyDirVolumes.seedContainer" (dict "volumes" $edv "image" .Values.images.autorecovery "securityContext" .Values.autorecovery.containerSecurityContext "root" .) | nindent 6 }}
+      {{- end }}
       {{- if .Values.tls.autorecovery.cacerts.enabled }}
       - name: cacerts
         image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.autorecovery "root" .) }}"
@@ -132,6 +136,9 @@ spec:
 {{ toYaml .Values.autorecovery.initContainersExtraVolumeMounts | indent 8 }}
         {{- end }}
         {{- include "pulsar.autorecovery.certs.volumeMounts" . | nindent 8 }}
+        {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.autorecovery.containerSecurityContext "volumes" $edv "root" .) }}
+        {{- include "pulsar.emptyDirVolumes.mounts" $edv | nindent 8 }}
+        {{- end }}
       {{- end }}
       {{- if and .Values.autorecovery.waitBookkeeperTimeout (gt (.Values.autorecovery.waitBookkeeperTimeout | int) 0) }}
       # This initContainer will wait for bookkeeper initnewcluster to complete
@@ -153,6 +160,9 @@ spec:
 {{ toYaml .Values.autorecovery.initContainersExtraVolumeMounts | indent 8 }}
         {{- end }}
         {{- include "pulsar.autorecovery.certs.volumeMounts" . | nindent 8 }}
+        {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.autorecovery.containerSecurityContext "volumes" $edv "root" .) }}
+        {{- include "pulsar.emptyDirVolumes.mounts" $edv | nindent 8 }}
+        {{- end }}
       {{- end }}
       {{- if .Values.autorecovery.initContainers }}
         {{- toYaml .Values.autorecovery.initContainers | nindent 6 }}
@@ -235,7 +245,13 @@ spec:
 {{ toYaml .Values.autorecovery.extraVolumeMounts | indent 8 }}
         {{- end }}
         {{- include "pulsar.autorecovery.certs.volumeMounts" . | nindent 8 }}
+        {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.autorecovery.containerSecurityContext "volumes" $edv "root" .) }}
+        {{- include "pulsar.emptyDirVolumes.mounts" $edv | nindent 8 }}
+        {{- end }}
       volumes:
+      {{- if include "pulsar.emptyDirVolumes.enabled" (dict "securityContext" .Values.autorecovery.containerSecurityContext "volumes" $edv "root" .) }}
+      {{- include "pulsar.emptyDirVolumes.volumes" $edv | nindent 6 }}
+      {{- end }}
       {{- include "pulsar.autorecovery.certs.volumes" . | nindent 6 }}
       {{- if .Values.autorecovery.extraVolumes }}
 {{ toYaml .Values.autorecovery.extraVolumes | indent 6 }}
